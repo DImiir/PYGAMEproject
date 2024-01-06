@@ -11,15 +11,15 @@ size = width, height = 0.8 * info.current_w, 0.8 * info.current_h
 screen = pygame.display.set_mode(size)
 pygame.display.set_caption("KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC")
 clock = pygame.time.Clock()
+fullscreen_mode = False
 
 
 class Character(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(all_sprites)
         self.first_pos = pygame.image.load('pictures/character/1pos.tiff')
-        self.image = pygame.transform.scale(
-            self.first_pos, (self.first_pos.get_width() * 4,
-                             self.first_pos.get_height() * 4))
+        self.image = pygame.transform.scale(self.first_pos, (self.first_pos.get_width() * 4,
+                                                             self.first_pos.get_height() * 4))
         self.frames_for_right = [pygame.image.load('pictures/character/go_right1.tiff'),
                                  pygame.image.load('pictures/character/go_right1.tiff'),
                                  pygame.image.load('pictures/character/go_right2.tiff'),
@@ -39,19 +39,21 @@ class Character(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(pos_x, pos_y)
         self.pos_x = pos_x
         self.pos_y = pos_y
+        self.HP = 100
+        self.last_hit = 0
 
     def move(self):
         if to_up1:
             if self.pos_y > 35:
                 self.pos_y -= self.speed
         if to_down1:
-            if self.pos_y < height - self.image.get_height() - 15:
+            if self.pos_y < height / 0.8 - self.image.get_height() - 15:
                 self.pos_y += self.speed
         if to_left1:
             if self.pos_x > 15:
                 self.pos_x -= self.speed
         if to_right1:
-            if self.pos_x < width - self.image.get_width() - 15:
+            if self.pos_x < width / 0.8 - self.image.get_width() - 15:
                 self.pos_x += self.speed
         self.rect = self.image.get_rect().move(self.pos_x, self.pos_y)
 
@@ -108,14 +110,19 @@ class Character(pygame.sprite.Sprite):
             self.right = True
             self.up = False
 
+    def hit(self, damage):
+        if pygame.time.get_ticks() - self.last_hit >= 2000:
+            self.HP -= damage
+            self.last_hit = pygame.time.get_ticks()
+            if self.HP <= 0:
+                all_sprites.remove(self)
+
 
 class Attack(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, movement):
         super().__init__(all_sprites, attacks)
         first_pos = pygame.image.load('pictures/gold_attack/gold1.tiff')
-        self.image = pygame.transform.scale(
-            first_pos, (first_pos.get_width() * 4,
-                        first_pos.get_height() * 4))
+        self.image = pygame.transform.scale(first_pos, (first_pos.get_width() * 4, first_pos.get_height() * 4))
         self.rect = self.image.get_rect().move(pos_x, pos_y)
         self.cur_frame = 0
         self.frames = [pygame.transform.rotate(first_pos, 90), pygame.transform.rotate(first_pos, 180),
@@ -156,9 +163,8 @@ class Enemy(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(all_sprites, enemies)
         self.first_pos = pygame.image.load('pictures/enemy/1pos.tiff')
-        self.image = pygame.transform.scale(
-            self.first_pos, (self.first_pos.get_width() * 4,
-                             self.first_pos.get_height() * 4))
+        self.image = pygame.transform.scale(self.first_pos, (self.first_pos.get_width() * 4,
+                                                             self.first_pos.get_height() * 4))
         self.frames_for_right = [pygame.image.load('pictures/enemy/go_right1.tiff'),
                                  pygame.image.load('pictures/enemy/go_right1.tiff'),
                                  pygame.image.load('pictures/enemy/go_right2.tiff'),
@@ -179,19 +185,20 @@ class Enemy(pygame.sprite.Sprite):
         self.pos_x = pos_x
         self.pos_y = pos_y
         self.HP = 200
+        self.damage = 20
 
     def move(self):
         if chel.pos_y < self.pos_y:
             if self.pos_y > 35:
                 self.pos_y -= self.speed
         if chel.pos_y > self.pos_y:
-            if self.pos_y < height - self.image.get_height() - 15:
+            if self.pos_y < height / 0.8 - self.image.get_height() - 15:
                 self.pos_y += self.speed
         if chel.pos_x < self.pos_x:
             if self.pos_x > 15:
                 self.pos_x -= self.speed
         if chel.pos_x > self.pos_x:
-            if self.pos_x < width - self.image.get_width() - 15:
+            if self.pos_x < width / 0.8 - self.image.get_width() - 15:
                 self.pos_x += self.speed
         self.rect = self.image.get_rect().move(self.pos_x, self.pos_y)
 
@@ -242,14 +249,40 @@ def terminate():
     sys.exit()
 
 
-def start_screen():
+def start_screen(screen):
+    global fullscreen_mode
+    image = pygame.image.load('pictures/second.tiff')
+    fon = pygame.transform.scale(image, size)
+    screen.blit(fon, (0, 0))
+    start_screen_tool()
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_f:
+                fullscreen_mode = not fullscreen_mode
+                if fullscreen_mode:
+                    screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
+                    fon = pygame.transform.scale(image, (info.current_w, info.current_h))
+                    screen.blit(fon, (0, 0))
+                    start_screen_tool()
+                else:
+                    screen = pygame.display.set_mode(size)
+                    fon = pygame.transform.scale(image, size)
+                    screen.blit(fon, (0, 0))
+                    start_screen_tool()
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN:
+                return
+        pygame.display.flip()
+        clock.tick(60)
+
+
+def start_screen_tool():
     intro_text = ["KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC",
                   "",
                   "НАЖМИТЕ ЧТО-НИБУДЬ",
                   "ЧТОБЫ НАЧАТЬ"]
-    image = pygame.image.load('pictures/second.tiff')
-    fon = pygame.transform.scale(image, (image.get_width(), image.get_height()))
-    screen.blit(fon, (0, 0))
     font = pygame.font.Font(None, 30)
     text_coord = 50
     for line in intro_text:
@@ -260,86 +293,123 @@ def start_screen():
         intro_rect.x = 10
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
+
+
+def game_over(screen):
+    global fullscreen_mode
+    image = pygame.image.load('pictures/game_over.tiff')
+    fon = pygame.transform.scale(image, size)
+    if fullscreen_mode:
+        fon = pygame.transform.scale(image, (info.current_w, info.current_h))
+    screen.blit(fon, (0, 0))
+    start_screen_tool()
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
-                return
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_f:
+                fullscreen_mode = not fullscreen_mode
+                if fullscreen_mode:
+                    screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
+                    fon = pygame.transform.scale(image, (info.current_w, info.current_h))
+                    screen.blit(fon, (0, 0))
+                    start_screen_tool()
+                else:
+                    screen = pygame.display.set_mode(size)
+                    fon = pygame.transform.scale(image, size)
+                    screen.blit(fon, (0, 0))
+                    start_screen_tool()
         pygame.display.flip()
         clock.tick(60)
 
 
-start_screen()
-clock = pygame.time.Clock()
+start_screen(screen)
 chel = Character(100, 100)
 image = pygame.image.load('pictures/background.png')
-background = pygame.transform.scale(image, (width, height))
-fullscreen_mode = False
+background = pygame.transform.scale(image, (info.current_w, info.current_h))
 to_right1, to_left1, to_up1, to_down1 = False, False, False, False
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             terminate()
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_a:
-                to_left1 = True
-            if event.key == pygame.K_d:
-                to_right1 = True
-            if event.key == pygame.K_s:
-                to_down1 = True
-            if event.key == pygame.K_w:
-                to_up1 = True
-            if event.key == pygame.K_LEFT:
-                Attack(chel.pos_x - 10, chel.pos_y + 20, 'left')
-            if event.key == pygame.K_RIGHT:
-                Attack(chel.pos_x + 10, chel.pos_y + 20, 'right')
-            if event.key == pygame.K_DOWN:
-                Attack(chel.pos_x + 10, chel.pos_y + 10, 'down')
-            if event.key == pygame.K_UP:
-                Attack(chel.pos_x + 10, chel.pos_y - 10, 'up')
-            if event.key == pygame.K_q:
-                Enemy(random.randint(500, 700), random.randint(500, 700))
-            if event.key == pygame.K_f:
-                fullscreen_mode = not fullscreen_mode
-                if fullscreen_mode:
-                    screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
-                else:
-                    screen = pygame.display.set_mode(size)
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_a:
-                to_left1 = False
-                chel.cur_frame3 = 0
-            if event.key == pygame.K_d:
-                to_right1 = False
-                chel.cur_frame4 = 0
-            if event.key == pygame.K_s:
-                to_down1 = False
-                chel.cur_frame2 = 0
-            if event.key == pygame.K_w:
-                chel.cur_frame1 = 0
-                to_up1 = False
-    screen.fill((255, 255, 255))
-    clock.tick(30)
-    screen.blit(background, (0, 0))
-    if enemies:
-        for enem in enemies:
-            enem.move()
-    if attacks:
-        for atk in attacks:
-            atk.move()
-            if (atk.pos_x <= 10 or atk.pos_x >= width - atk.image.get_width() - 10
-                    or atk.pos_y <= 40 or atk.pos_y >= height - atk.image.get_height() - 10):
-                attacks.remove(atk)
-                all_sprites.remove(atk)
-            if enemies:
-                for enem in enemies:
-                    if atk.rect.colliderect(enem.rect):
-                        enem.hit(atk.damage)
-                        attacks.remove(atk)
-                        all_sprites.remove(atk)
-    chel.move()
-    all_sprites.update()
-    all_sprites.draw(screen)
-    pygame.display.update()
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_f:
+            fullscreen_mode = not fullscreen_mode
+            if fullscreen_mode:
+                screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
+            else:
+                screen = pygame.display.set_mode(size)
+        if fullscreen_mode:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_a:
+                    to_left1 = True
+                if event.key == pygame.K_d:
+                    to_right1 = True
+                if event.key == pygame.K_s:
+                    to_down1 = True
+                if event.key == pygame.K_w:
+                    to_up1 = True
+                if event.key == pygame.K_LEFT:
+                    Attack(chel.pos_x - 10, chel.pos_y + 20, 'left')
+                if event.key == pygame.K_RIGHT:
+                    Attack(chel.pos_x + 10, chel.pos_y + 20, 'right')
+                if event.key == pygame.K_DOWN:
+                    Attack(chel.pos_x + 10, chel.pos_y + 10, 'down')
+                if event.key == pygame.K_UP:
+                    Attack(chel.pos_x + 10, chel.pos_y - 10, 'up')
+                if event.key == pygame.K_q:
+                    Enemy(random.randint(500, 700), random.randint(500, 700))
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_a:
+                    to_left1 = False
+                    chel.cur_frame3 = 0
+                if event.key == pygame.K_d:
+                    to_right1 = False
+                    chel.cur_frame4 = 0
+                if event.key == pygame.K_s:
+                    to_down1 = False
+                    chel.cur_frame2 = 0
+                if event.key == pygame.K_w:
+                    chel.cur_frame1 = 0
+                    to_up1 = False
+    if fullscreen_mode:
+        screen.fill((0, 0, 0))
+        clock.tick(30)
+        screen.blit(background, (0, 0))
+        if enemies:
+            for enem in enemies:
+                enem.move()
+        if attacks:
+            for atk in attacks:
+                atk.move()
+                if (atk.pos_x <= 10 or atk.pos_x >= width / 0.8 - atk.image.get_width() - 10
+                        or atk.pos_y <= 40 or atk.pos_y >= height / 0.8 - atk.image.get_height() - 10):
+                    attacks.remove(atk)
+                    all_sprites.remove(atk)
+                if enemies:
+                    for enem in enemies:
+                        if atk.rect.colliderect(enem.rect):
+                            enem.hit(atk.damage)
+                            attacks.remove(atk)
+                            all_sprites.remove(atk)
+        if enemies:
+            for enem in enemies:
+                if chel.rect.colliderect(enem.rect):
+                    chel.hit(enem.damage)
+        if chel not in all_sprites:
+            game_over(screen)
+        chel.move()
+        all_sprites.update()
+        all_sprites.draw(screen)
+        pygame.display.update()
+    else:
+        screen.fill((0, 0, 0))
+        font = pygame.font.Font(None, 50)
+        text1 = font.render("Нажмите F чтобы войти в полноэкранный режим", True, (255, 255, 255))
+        text2 = font.render("(без этого никак)", True, (255, 255, 255))
+        text_x1 = width // 2 - text1.get_width() // 2
+        text_y1 = height // 2 - text1.get_height()
+        text_x2 = width // 2 - text2.get_width() // 2
+        text_y2 = height // 2 + text2.get_height()
+        screen.blit(text1, (text_x1, text_y1))
+        screen.blit(text2, (text_x2, text_y2))
+        pygame.display.flip()
