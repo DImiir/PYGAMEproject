@@ -12,6 +12,113 @@ screen = pygame.display.set_mode(size)
 pygame.display.set_caption("KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC")
 clock = pygame.time.Clock()
 fullscreen_mode = False
+image = pygame.image.load('pictures/background.png')
+background = pygame.transform.scale(image, (info.current_w, info.current_h))
+to_right1, to_left1, to_up1, to_down1 = False, False, False, False
+score = 0
+
+
+def game(fullscreen_mode, screen):
+    global to_right1, to_left1, to_up1, to_down1
+    stamina_cd = 0
+    fight_cd = 0
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_f:
+                fullscreen_mode = not fullscreen_mode
+                if fullscreen_mode:
+                    screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
+                else:
+                    screen = pygame.display.set_mode(size)
+            if fullscreen_mode:
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_a:
+                        to_left1 = True
+                    if event.key == pygame.K_d:
+                        to_right1 = True
+                    if event.key == pygame.K_s:
+                        to_down1 = True
+                    if event.key == pygame.K_w:
+                        to_up1 = True
+                    if chel.stamina >= 20 and pygame.time.get_ticks() - fight_cd > 3000:
+                        if event.key == pygame.K_LEFT:
+                            Attack(chel.pos_x - 10, chel.pos_y + 20, 'left')
+                        if event.key == pygame.K_RIGHT:
+                            Attack(chel.pos_x + 10, chel.pos_y + 20, 'right')
+                        if event.key == pygame.K_DOWN:
+                            Attack(chel.pos_x + 10, chel.pos_y + 10, 'down')
+                        if event.key == pygame.K_UP:
+                            Attack(chel.pos_x + 10, chel.pos_y - 10, 'up')
+                    if event.key == pygame.K_q:
+                        level_build()
+                        fight_cd = pygame.time.get_ticks()
+                if event.type == pygame.KEYUP:
+                    if event.key == pygame.K_a:
+                        to_left1 = False
+                        chel.cur_frame3 = 0
+                    if event.key == pygame.K_d:
+                        to_right1 = False
+                        chel.cur_frame4 = 0
+                    if event.key == pygame.K_s:
+                        to_down1 = False
+                        chel.cur_frame2 = 0
+                    if event.key == pygame.K_w:
+                        chel.cur_frame1 = 0
+                        to_up1 = False
+        if fullscreen_mode:
+            screen.fill((0, 0, 0))
+            clock.tick(30)
+            screen.blit(background, (0, 0))
+            pygame.draw.rect(screen, pygame.color.Color('red'), (18, 18, chel.HP * 4, 20))
+            pygame.draw.rect(screen, pygame.color.Color('blue'), (18, 40, chel.stamina * 2, 20))
+            if pygame.time.get_ticks() - fight_cd > 3000:
+                if enemies:
+                    for enem in enemies:
+                        enem.move()
+                        if chel.rect.colliderect(enem.rect):
+                            enem.player_hit()
+            if attacks:
+                for atk in attacks:
+                    atk.move()
+                    if (atk.pos_x <= 10 or atk.pos_x >= width / 0.8 - atk.image.get_width() - 10
+                            or atk.pos_y <= 40 or atk.pos_y >= height / 0.8 - atk.image.get_height() - 10):
+                        attacks.remove(atk)
+                        all_sprites.remove(atk)
+                    if enemies:
+                        for enem in enemies:
+                            if atk.rect.colliderect(enem.rect):
+                                enem.hit(atk.damage)
+                                attacks.remove(atk)
+                                all_sprites.remove(atk)
+            if chel not in all_sprites:
+                return
+            if pygame.time.get_ticks() - stamina_cd >= 1000 and chel.stamina < 200:
+                chel.stamina += 20
+                stamina_cd = pygame.time.get_ticks()
+            chel.move()
+            all_sprites.update()
+            all_sprites.draw(screen)
+            font = pygame.font.Font(None, 50)
+            text = font.render(str(score), True, (255, 255, 255))
+            text_w, text_h = text.get_width(), text.get_height()
+            screen.blit(text, (info.current_w - text_w - 10, 18))
+            pygame.draw.rect(screen, (255, 255, 255), (info.current_w - text_w - 20, 18,
+                                                       text_w + 20, text_h), 1)
+            pygame.display.update()
+        else:
+            screen.fill((0, 0, 0))
+            font = pygame.font.Font(None, 50)
+            text1 = font.render("Нажмите F чтобы войти в полноэкранный режим", True, (255, 255, 255))
+            text2 = font.render("(без этого никак)", True, (255, 255, 255))
+            text_x1 = width // 2 - text1.get_width() // 2
+            text_y1 = height // 2 - text1.get_height()
+            text_x2 = width // 2 - text2.get_width() // 2
+            text_y2 = height // 2 + text2.get_height()
+            screen.blit(text1, (text_x1, text_y1))
+            screen.blit(text2, (text_x2, text_y2))
+            pygame.display.flip()
 
 
 class Character(pygame.sprite.Sprite):
@@ -40,6 +147,7 @@ class Character(pygame.sprite.Sprite):
         self.pos_x = pos_x
         self.pos_y = pos_y
         self.HP = 100
+        self.stamina = 200
         self.last_hit = 0
 
     def move(self):
@@ -110,13 +218,6 @@ class Character(pygame.sprite.Sprite):
             self.right = True
             self.up = False
 
-    def hit(self, damage):
-        if pygame.time.get_ticks() - self.last_hit >= 2000:
-            self.HP -= damage
-            self.last_hit = pygame.time.get_ticks()
-            if self.HP <= 0:
-                all_sprites.remove(self)
-
 
 class Attack(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, movement):
@@ -139,6 +240,7 @@ class Attack(pygame.sprite.Sprite):
         self.pos_y = pos_y
         self.movement = movement
         self.damage = 25
+        chel.stamina -= 20
 
     def move(self):
         if self.movement == 'up':
@@ -186,6 +288,7 @@ class Enemy(pygame.sprite.Sprite):
         self.pos_y = pos_y
         self.HP = 200
         self.damage = 20
+        self.last_hit = 0
 
     def move(self):
         if chel.pos_y < self.pos_y:
@@ -203,13 +306,27 @@ class Enemy(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(self.pos_x, self.pos_y)
 
     def update(self):
-        if chel.pos_y < self.pos_y:
+        if chel.pos_x < self.pos_x:
+            self.cur_frame3 = (self.cur_frame3 + 1) % len(self.frames_for_left)
+            image = self.frames_for_left[self.cur_frame3]
+            self.image = pygame.transform.scale(
+                image, (image.get_width() * 4,
+                        image.get_height() * 4))
+            self.right = False
+        if chel.pos_x > self.pos_x:
+            self.cur_frame4 = (self.cur_frame4 + 1) % len(self.frames_for_right)
+            image = self.frames_for_right[self.cur_frame4]
+            self.image = pygame.transform.scale(
+                image, (image.get_width() * 4,
+                        image.get_height() * 4))
+            self.right = True
+        if chel.pos_y + 3 < self.pos_y:
             self.cur_frame1 = (self.cur_frame1 + 1) % len(self.frames_for_up)
             image = self.frames_for_up[self.cur_frame1]
             self.image = pygame.transform.scale(
                 image, (image.get_width() * 4,
                         image.get_height() * 4))
-        elif chel.pos_y > self.pos_y:
+        if chel.pos_y - 3 > self.pos_y:
             if self.right:
                 self.cur_frame2 = (self.cur_frame2 + 1) % len(self.frames_for_right)
                 image = self.frames_for_right[self.cur_frame2]
@@ -222,26 +339,29 @@ class Enemy(pygame.sprite.Sprite):
                 self.image = pygame.transform.scale(
                     image, (image.get_width() * 4,
                             image.get_height() * 4))
-        elif chel.pos_x < self.pos_x:
-            self.cur_frame3 = (self.cur_frame3 + 1) % len(self.frames_for_left)
-            image = self.frames_for_left[self.cur_frame3]
-            self.image = pygame.transform.scale(
-                image, (image.get_width() * 4,
-                        image.get_height() * 4))
-            self.right = False
-        elif chel.pos_x > self.pos_x:
-            self.cur_frame4 = (self.cur_frame4 + 1) % len(self.frames_for_right)
-            image = self.frames_for_right[self.cur_frame4]
-            self.image = pygame.transform.scale(
-                image, (image.get_width() * 4,
-                        image.get_height() * 4))
-            self.right = True
 
     def hit(self, damage):
+        global score
         self.HP -= damage
+        if chel.pos_y < self.pos_y:
+            self.pos_y += 8
+        if chel.pos_y > self.pos_y:
+            self.pos_y -= 8
+        if chel.pos_x < self.pos_x:
+            self.pos_x += 8
+        if chel.pos_x > self.pos_x:
+            self.pos_x -= 8
         if self.HP <= 0:
-            enemies.remove(enem)
-            all_sprites.remove(enem)
+            enemies.remove(self)
+            all_sprites.remove(self)
+            score += 10
+
+    def player_hit(self):
+        if pygame.time.get_ticks() - self.last_hit >= 2000:
+            chel.HP -= self.damage
+            self.last_hit = pygame.time.get_ticks()
+            if chel.HP <= 0:
+                all_sprites.remove(chel)
 
 
 def terminate():
@@ -249,12 +369,25 @@ def terminate():
     sys.exit()
 
 
-def start_screen(screen):
+def start_end_screen(screen, end):
     global fullscreen_mode
+    text = ["KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC",
+            "",
+            "НАЖМИТЕ ЧТО-НИБУДЬ",
+            "ЧТОБЫ НАЧАТЬ"]
     image = pygame.image.load('pictures/second.tiff')
+    if end:
+        text = ["KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC",
+                "",
+                f"ВЫ НАБРАЛИ {score}",
+                "НАЖМИТЕ Q",
+                "ЧТОБЫ ВЕРНУТЬСЯ"]
+        image = pygame.image.load('pictures/game_over.tiff')
     fon = pygame.transform.scale(image, size)
+    if fullscreen_mode:
+        fon = pygame.transform.scale(image, (info.current_w, info.current_h))
     screen.blit(fon, (0, 0))
-    start_screen_tool()
+    text_tool(text)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -265,27 +398,27 @@ def start_screen(screen):
                     screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
                     fon = pygame.transform.scale(image, (info.current_w, info.current_h))
                     screen.blit(fon, (0, 0))
-                    start_screen_tool()
+                    text_tool(text)
                 else:
                     screen = pygame.display.set_mode(size)
                     fon = pygame.transform.scale(image, size)
                     screen.blit(fon, (0, 0))
-                    start_screen_tool()
-            elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
+                    text_tool(text)
+            elif end and event.type == pygame.KEYDOWN and event.key == pygame.K_q:
+                all_sprites.empty()
+                enemies.empty()
+                attacks.empty()
+                restart()
+            elif not end and (event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN):
                 return
         pygame.display.flip()
         clock.tick(60)
 
 
-def start_screen_tool():
-    intro_text = ["KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC",
-                  "",
-                  "НАЖМИТЕ ЧТО-НИБУДЬ",
-                  "ЧТОБЫ НАЧАТЬ"]
+def text_tool(text):
     font = pygame.font.Font(None, 30)
     text_coord = 50
-    for line in intro_text:
+    for line in text:
         string_rendered = font.render(line, 1, pygame.Color('black'))
         intro_rect = string_rendered.get_rect()
         text_coord += 10
@@ -295,121 +428,21 @@ def start_screen_tool():
         screen.blit(string_rendered, intro_rect)
 
 
-def game_over(screen):
-    global fullscreen_mode
-    image = pygame.image.load('pictures/game_over.tiff')
-    fon = pygame.transform.scale(image, size)
-    if fullscreen_mode:
-        fon = pygame.transform.scale(image, (info.current_w, info.current_h))
-    screen.blit(fon, (0, 0))
-    start_screen_tool()
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                terminate()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_f:
-                fullscreen_mode = not fullscreen_mode
-                if fullscreen_mode:
-                    screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
-                    fon = pygame.transform.scale(image, (info.current_w, info.current_h))
-                    screen.blit(fon, (0, 0))
-                    start_screen_tool()
-                else:
-                    screen = pygame.display.set_mode(size)
-                    fon = pygame.transform.scale(image, size)
-                    screen.blit(fon, (0, 0))
-                    start_screen_tool()
-        pygame.display.flip()
-        clock.tick(60)
+def level_build():
+    for number in range(random.randint(1, 5)):
+        Enemy(random.randint(16, info.current_w - 16), random.randint(36, info.current_h - 36))
 
 
-start_screen(screen)
-chel = Character(100, 100)
-image = pygame.image.load('pictures/background.png')
-background = pygame.transform.scale(image, (info.current_w, info.current_h))
-to_right1, to_left1, to_up1, to_down1 = False, False, False, False
-while True:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            terminate()
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_f:
-            fullscreen_mode = not fullscreen_mode
-            if fullscreen_mode:
-                screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
-            else:
-                screen = pygame.display.set_mode(size)
-        if fullscreen_mode:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_a:
-                    to_left1 = True
-                if event.key == pygame.K_d:
-                    to_right1 = True
-                if event.key == pygame.K_s:
-                    to_down1 = True
-                if event.key == pygame.K_w:
-                    to_up1 = True
-                if event.key == pygame.K_LEFT:
-                    Attack(chel.pos_x - 10, chel.pos_y + 20, 'left')
-                if event.key == pygame.K_RIGHT:
-                    Attack(chel.pos_x + 10, chel.pos_y + 20, 'right')
-                if event.key == pygame.K_DOWN:
-                    Attack(chel.pos_x + 10, chel.pos_y + 10, 'down')
-                if event.key == pygame.K_UP:
-                    Attack(chel.pos_x + 10, chel.pos_y - 10, 'up')
-                if event.key == pygame.K_q:
-                    Enemy(random.randint(500, 700), random.randint(500, 700))
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_a:
-                    to_left1 = False
-                    chel.cur_frame3 = 0
-                if event.key == pygame.K_d:
-                    to_right1 = False
-                    chel.cur_frame4 = 0
-                if event.key == pygame.K_s:
-                    to_down1 = False
-                    chel.cur_frame2 = 0
-                if event.key == pygame.K_w:
-                    chel.cur_frame1 = 0
-                    to_up1 = False
-    if fullscreen_mode:
-        screen.fill((0, 0, 0))
-        clock.tick(30)
-        screen.blit(background, (0, 0))
-        if enemies:
-            for enem in enemies:
-                enem.move()
-        if attacks:
-            for atk in attacks:
-                atk.move()
-                if (atk.pos_x <= 10 or atk.pos_x >= width / 0.8 - atk.image.get_width() - 10
-                        or atk.pos_y <= 40 or atk.pos_y >= height / 0.8 - atk.image.get_height() - 10):
-                    attacks.remove(atk)
-                    all_sprites.remove(atk)
-                if enemies:
-                    for enem in enemies:
-                        if atk.rect.colliderect(enem.rect):
-                            enem.hit(atk.damage)
-                            attacks.remove(atk)
-                            all_sprites.remove(atk)
-        if enemies:
-            for enem in enemies:
-                if chel.rect.colliderect(enem.rect):
-                    chel.hit(enem.damage)
-        if chel not in all_sprites:
-            game_over(screen)
-        chel.move()
-        all_sprites.update()
-        all_sprites.draw(screen)
-        pygame.display.update()
-    else:
-        screen.fill((0, 0, 0))
-        font = pygame.font.Font(None, 50)
-        text1 = font.render("Нажмите F чтобы войти в полноэкранный режим", True, (255, 255, 255))
-        text2 = font.render("(без этого никак)", True, (255, 255, 255))
-        text_x1 = width // 2 - text1.get_width() // 2
-        text_y1 = height // 2 - text1.get_height()
-        text_x2 = width // 2 - text2.get_width() // 2
-        text_y2 = height // 2 + text2.get_height()
-        screen.blit(text1, (text_x1, text_y1))
-        screen.blit(text2, (text_x2, text_y2))
-        pygame.display.flip()
+def restart():
+    global chel, to_right1, to_left1, to_up1, to_down1
+    to_right1, to_left1, to_up1, to_down1 = False, False, False, False
+    start_end_screen(screen, False)
+    chel = Character(150, 200)
+    game(fullscreen_mode, screen)
+    start_end_screen(screen, True)
+
+
+start_end_screen(screen, False)
+chel = Character(150, 200)
+game(fullscreen_mode, screen)
+start_end_screen(screen, True)
