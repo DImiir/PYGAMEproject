@@ -1,6 +1,7 @@
 import pygame
 import sys
 import random
+import sqlite3
 
 pygame.init()
 all_sprites = pygame.sprite.Group()
@@ -22,6 +23,7 @@ def game(fullscreen_mode, screen):
     global to_right1, to_left1, to_up1, to_down1
     stamina_cd = 0
     fight_cd = 0
+    fight = False
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -51,9 +53,11 @@ def game(fullscreen_mode, screen):
                             Attack(chel.pos_x + 10, chel.pos_y + 10, 'down')
                         if event.key == pygame.K_UP:
                             Attack(chel.pos_x + 10, chel.pos_y - 10, 'up')
-                    if event.key == pygame.K_q:
+                    if event.key == pygame.K_e and 630 < chel.pos_x <= 760 and 0 < chel.pos_y <= 100 and not enemies:
                         level_build()
                         fight_cd = pygame.time.get_ticks()
+                        fight = True
+                        chel.pos_y += 800 - chel.pos_y
                 if event.type == pygame.KEYUP:
                     if event.key == pygame.K_a:
                         to_left1 = False
@@ -74,6 +78,7 @@ def game(fullscreen_mode, screen):
             pygame.draw.rect(screen, pygame.color.Color('red'), (18, 18, chel.HP * 4, 20))
             pygame.draw.rect(screen, pygame.color.Color('blue'), (18, 40, chel.stamina * 2, 20))
             if pygame.time.get_ticks() - fight_cd > 3000:
+                fight = False
                 if enemies:
                     for enem in enemies:
                         enem.move()
@@ -106,6 +111,22 @@ def game(fullscreen_mode, screen):
             screen.blit(text, (info.current_w - text_w - 10, 18))
             pygame.draw.rect(screen, (255, 255, 255), (info.current_w - text_w - 20, 18,
                                                        text_w + 20, text_h), 1)
+            middle_text = font.render('0', True, (255, 255, 255))
+            if not enemies and 630 < chel.pos_x <= 760 and 0 < chel.pos_y <= 100:
+                middle_text = font.render('Нажмите E, чтобы перейти в следующую комнату', True, (255, 255, 255))
+            if pygame.time.get_ticks() - fight_cd <= 3000:
+                middle_text = font.render('1', True, (255, 255, 255))
+            if pygame.time.get_ticks() - fight_cd <= 2000:
+                middle_text = font.render('2', True, (255, 255, 255))
+            if pygame.time.get_ticks() - fight_cd <= 1000:
+                middle_text = font.render('3', True, (255, 255, 255))
+            if fight or (not enemies and 630 < chel.pos_x <= 760 and 0 < chel.pos_y <= 100):
+                middle_text_w, middle_text_h = middle_text.get_width(), middle_text.get_height()
+                pygame.draw.rect(screen, (0, 0, 0), (info.current_w // 2 - middle_text_w // 2 - 20,
+                                                     info.current_h // 2 - middle_text_h // 2 - 20,
+                                                     middle_text_w + 40, middle_text_h + 40))
+                screen.blit(middle_text, (info.current_w // 2 - middle_text_w // 2,
+                                          info.current_h // 2 - middle_text_h // 2))
             pygame.display.update()
         else:
             screen.fill((0, 0, 0))
@@ -153,16 +174,28 @@ class Character(pygame.sprite.Sprite):
     def move(self):
         if to_up1:
             if self.pos_y > 35:
-                self.pos_y -= self.speed
+                if to_left1 or to_right1:
+                    self.pos_y -= self.speed // 2
+                else:
+                    self.pos_y -= self.speed
         if to_down1:
             if self.pos_y < height / 0.8 - self.image.get_height() - 15:
-                self.pos_y += self.speed
+                if to_left1 or to_right1:
+                    self.pos_y += self.speed // 2
+                else:
+                    self.pos_y += self.speed
         if to_left1:
             if self.pos_x > 15:
-                self.pos_x -= self.speed
+                if to_down1 or to_up1:
+                    self.pos_x -= self.speed // 2
+                else:
+                    self.pos_x -= self.speed
         if to_right1:
             if self.pos_x < width / 0.8 - self.image.get_width() - 15:
-                self.pos_x += self.speed
+                if to_down1 or to_up1:
+                    self.pos_x += self.speed // 2
+                else:
+                    self.pos_x += self.speed
         self.rect = self.image.get_rect().move(self.pos_x, self.pos_y)
 
     def update(self):
@@ -282,7 +315,7 @@ class Enemy(pygame.sprite.Sprite):
                               pygame.image.load('pictures/enemy/go_back3.tiff')]
         self.right = True
         self.cur_frame1, self.cur_frame2, self.cur_frame3, self.cur_frame4 = 0, 0, 0, 0
-        self.speed = 5
+        self.speed = 3
         self.rect = self.image.get_rect().move(pos_x, pos_y)
         self.pos_x = pos_x
         self.pos_y = pos_y
@@ -294,13 +327,13 @@ class Enemy(pygame.sprite.Sprite):
         if chel.pos_y < self.pos_y:
             if self.pos_y > 35:
                 self.pos_y -= self.speed
-        if chel.pos_y > self.pos_y:
+        if chel.pos_y >= self.pos_y:
             if self.pos_y < height / 0.8 - self.image.get_height() - 15:
                 self.pos_y += self.speed
         if chel.pos_x < self.pos_x:
             if self.pos_x > 15:
                 self.pos_x -= self.speed
-        if chel.pos_x > self.pos_x:
+        if chel.pos_x >= self.pos_x:
             if self.pos_x < width / 0.8 - self.image.get_width() - 15:
                 self.pos_x += self.speed
         self.rect = self.image.get_rect().move(self.pos_x, self.pos_y)
@@ -308,49 +341,37 @@ class Enemy(pygame.sprite.Sprite):
     def update(self):
         if chel.pos_x < self.pos_x:
             self.cur_frame3 = (self.cur_frame3 + 1) % len(self.frames_for_left)
-            image = self.frames_for_left[self.cur_frame3]
-            self.image = pygame.transform.scale(
-                image, (image.get_width() * 4,
-                        image.get_height() * 4))
+            self.image = self.frames_for_left[self.cur_frame3]
             self.right = False
         if chel.pos_x > self.pos_x:
             self.cur_frame4 = (self.cur_frame4 + 1) % len(self.frames_for_right)
-            image = self.frames_for_right[self.cur_frame4]
-            self.image = pygame.transform.scale(
-                image, (image.get_width() * 4,
-                        image.get_height() * 4))
+            self.image = self.frames_for_right[self.cur_frame4]
             self.right = True
         if chel.pos_y + 3 < self.pos_y:
             self.cur_frame1 = (self.cur_frame1 + 1) % len(self.frames_for_up)
-            image = self.frames_for_up[self.cur_frame1]
-            self.image = pygame.transform.scale(
-                image, (image.get_width() * 4,
-                        image.get_height() * 4))
+            self.image = self.frames_for_up[self.cur_frame1]
         if chel.pos_y - 3 > self.pos_y:
             if self.right:
                 self.cur_frame2 = (self.cur_frame2 + 1) % len(self.frames_for_right)
-                image = self.frames_for_right[self.cur_frame2]
-                self.image = pygame.transform.scale(
-                    image, (image.get_width() * 4,
-                            image.get_height() * 4))
+                self.image = self.frames_for_right[self.cur_frame2]
             else:
                 self.cur_frame2 = (self.cur_frame2 + 1) % len(self.frames_for_left)
-                image = self.frames_for_left[self.cur_frame2]
-                self.image = pygame.transform.scale(
-                    image, (image.get_width() * 4,
-                            image.get_height() * 4))
+                self.image = self.frames_for_left[self.cur_frame2]
+        self.image = pygame.transform.scale(
+            self.image, (self.image.get_width() * 4,
+                         self.image.get_height() * 4))
 
     def hit(self, damage):
         global score
         self.HP -= damage
         if chel.pos_y < self.pos_y:
-            self.pos_y += 8
+            self.pos_y += 12
         if chel.pos_y > self.pos_y:
-            self.pos_y -= 8
+            self.pos_y -= 12
         if chel.pos_x < self.pos_x:
-            self.pos_x += 8
+            self.pos_x += 12
         if chel.pos_x > self.pos_x:
-            self.pos_x -= 8
+            self.pos_x -= 12
         if self.HP <= 0:
             enemies.remove(self)
             all_sprites.remove(self)
@@ -371,17 +392,13 @@ def terminate():
 
 def start_end_screen(screen, end):
     global fullscreen_mode
+    statistics = False
     text = ["KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC",
-            "",
-            "НАЖМИТЕ ЧТО-НИБУДЬ",
-            "ЧТОБЫ НАЧАТЬ"]
+            "", "НАЧАТЬ", "", "СТАТИСТИКА"]
     image = pygame.image.load('pictures/second.tiff')
     if end:
         text = ["KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC",
-                "",
-                f"ВЫ НАБРАЛИ {score}",
-                "НАЖМИТЕ Q",
-                "ЧТОБЫ ВЕРНУТЬСЯ"]
+                "", f"ВЫ НАБРАЛИ {score}", "НАЖМИТЕ Q", "ЧТОБЫ ВЕРНУТЬСЯ"]
         image = pygame.image.load('pictures/game_over.tiff')
     fon = pygame.transform.scale(image, size)
     if fullscreen_mode:
@@ -409,8 +426,32 @@ def start_end_screen(screen, end):
                 enemies.empty()
                 attacks.empty()
                 restart()
-            elif not end and (event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN):
-                return
+            elif not end and event.type == pygame.MOUSEBUTTONDOWN:
+                if not statistics and 5 < event.pos[0] <= 95 and 115 < event.pos[1] <= 145:
+                    return
+                if 5 < event.pos[0] <= 148 and 175 < event.pos[1] <= 205:
+                    statistics = True
+                if statistics and 5 < event.pos[0] <= 88 and 55 < event.pos[1] <= 85:
+                    statistics = False
+        if statistics:
+            screen.blit(fon, (0, 0))
+            image = pygame.image.load('pictures/statistics.tiff')
+            fon = pygame.transform.scale(image, size)
+            if fullscreen_mode:
+                fon = pygame.transform.scale(image, (info.current_w, info.current_h))
+            screen.blit(fon, (0, 0))
+            text = ["НАЗАД"]
+            text_tool(text)
+        elif not end:
+            screen.blit(fon, (0, 0))
+            image = pygame.image.load('pictures/second.tiff')
+            fon = pygame.transform.scale(image, size)
+            if fullscreen_mode:
+                fon = pygame.transform.scale(image, (info.current_w, info.current_h))
+            screen.blit(fon, (0, 0))
+            text = ["KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC",
+                    "", "НАЧАТЬ", "", "СТАТИСТИКА"]
+            text_tool(text)
         pygame.display.flip()
         clock.tick(60)
 
@@ -418,19 +459,22 @@ def start_end_screen(screen, end):
 def text_tool(text):
     font = pygame.font.Font(None, 30)
     text_coord = 50
-    for line in text:
+    for num, line in enumerate(text):
         string_rendered = font.render(line, 1, pygame.Color('black'))
         intro_rect = string_rendered.get_rect()
         text_coord += 10
         intro_rect.top = text_coord
         intro_rect.x = 10
         text_coord += intro_rect.height
+        if line not in ['', 'KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC']:
+            pygame.draw.rect(screen, pygame.color.Color('black'), (intro_rect.x - 5, intro_rect.top - 5,
+                                                                   intro_rect.width + 10, intro_rect.height + 10), 1)
         screen.blit(string_rendered, intro_rect)
 
 
 def level_build():
     for number in range(random.randint(1, 5)):
-        Enemy(random.randint(16, info.current_w - 16), random.randint(36, info.current_h - 36))
+        Enemy(random.randint(16, info.current_w - 34), random.randint(36, info.current_h - 54))
 
 
 def restart():
