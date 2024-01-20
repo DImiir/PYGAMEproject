@@ -7,6 +7,7 @@ pygame.init()
 all_sprites = pygame.sprite.Group()
 attacks = pygame.sprite.Group()
 enemies = pygame.sprite.Group()
+potions = pygame.sprite.Group()
 info = pygame.display.Info()
 size = width, height = 0.8 * info.current_w, 0.8 * info.current_h
 screen = pygame.display.set_mode(size)
@@ -17,10 +18,14 @@ image = pygame.image.load('pictures/background.png')
 background = pygame.transform.scale(image, (info.current_w, info.current_h))
 to_right1, to_left1, to_up1, to_down1 = False, False, False, False
 score = 0
+nickname = ''
+lvl = 0
+speed_gain, strength_gain, health_gain = 0, 0, 0
+minimum, maximum = 1, 6
 
 
 def game(fullscreen_mode, screen):
-    global to_right1, to_left1, to_up1, to_down1
+    global to_right1, to_left1, to_up1, to_down1, lvl
     stamina_cd = 0
     fight_cd = 0
     fight = False
@@ -53,11 +58,14 @@ def game(fullscreen_mode, screen):
                             Attack(chel.pos_x + 10, chel.pos_y + 10, 'down')
                         if event.key == pygame.K_UP:
                             Attack(chel.pos_x + 10, chel.pos_y - 10, 'up')
-                    if event.key == pygame.K_e and 630 < chel.pos_x <= 760 and 0 < chel.pos_y <= 100 and not enemies:
-                        level_build()
-                        fight_cd = pygame.time.get_ticks()
-                        fight = True
-                        chel.pos_y += 800 - chel.pos_y
+                    if chel.rect.colliderect(door.rect) and not enemies:
+                        if event.key == pygame.K_e:
+                            level_build()
+                            fight_cd = pygame.time.get_ticks()
+                            fight = True
+                            chel.pos_y += 790 - chel.pos_y
+                            door.pos_x = random.randint(400, 1300)
+                            lvl += 1
                 if event.type == pygame.KEYUP:
                     if event.key == pygame.K_a:
                         to_left1 = False
@@ -102,6 +110,13 @@ def game(fullscreen_mode, screen):
             if pygame.time.get_ticks() - stamina_cd >= 1000 and chel.stamina < 200:
                 chel.stamina += 20
                 stamina_cd = pygame.time.get_ticks()
+            if potions:
+                for potion in potions:
+                    if chel.rect.colliderect(potion.rect):
+                        if chel.HP + potion.HP_return <= 200:
+                            chel.HP += potion.HP_return
+                            all_sprites.remove(potion)
+                            potions.remove(potion)
             chel.move()
             all_sprites.update()
             all_sprites.draw(screen)
@@ -109,10 +124,9 @@ def game(fullscreen_mode, screen):
             text = font.render(str(score), True, (255, 255, 255))
             text_w, text_h = text.get_width(), text.get_height()
             screen.blit(text, (info.current_w - text_w - 10, 18))
-            pygame.draw.rect(screen, (255, 255, 255), (info.current_w - text_w - 20, 18,
-                                                       text_w + 20, text_h), 1)
+            pygame.draw.rect(screen, (255, 255, 255), (info.current_w - text_w - 20, 18, text_w + 20, text_h), 1)
             middle_text = font.render('0', True, (255, 255, 255))
-            if not enemies and 630 < chel.pos_x <= 760 and 0 < chel.pos_y <= 100:
+            if not enemies and chel.rect.colliderect(door.rect):
                 middle_text = font.render('Нажмите E, чтобы перейти в следующую комнату', True, (255, 255, 255))
             if pygame.time.get_ticks() - fight_cd <= 3000:
                 middle_text = font.render('1', True, (255, 255, 255))
@@ -120,7 +134,7 @@ def game(fullscreen_mode, screen):
                 middle_text = font.render('2', True, (255, 255, 255))
             if pygame.time.get_ticks() - fight_cd <= 1000:
                 middle_text = font.render('3', True, (255, 255, 255))
-            if fight or (not enemies and 630 < chel.pos_x <= 760 and 0 < chel.pos_y <= 100):
+            if fight or (not enemies and chel.rect.colliderect(door.rect)):
                 middle_text_w, middle_text_h = middle_text.get_width(), middle_text.get_height()
                 pygame.draw.rect(screen, (0, 0, 0), (info.current_w // 2 - middle_text_w // 2 - 20,
                                                      info.current_h // 2 - middle_text_h // 2 - 20,
@@ -173,25 +187,25 @@ class Character(pygame.sprite.Sprite):
 
     def move(self):
         if to_up1:
-            if self.pos_y > 35:
+            if self.pos_y > 50:
                 if to_left1 or to_right1:
                     self.pos_y -= self.speed // 2
                 else:
                     self.pos_y -= self.speed
         if to_down1:
-            if self.pos_y < height / 0.8 - self.image.get_height() - 15:
+            if self.pos_y < height / 0.8 - self.image.get_height() - 20:
                 if to_left1 or to_right1:
                     self.pos_y += self.speed // 2
                 else:
                     self.pos_y += self.speed
         if to_left1:
-            if self.pos_x > 15:
+            if self.pos_x > 20:
                 if to_down1 or to_up1:
                     self.pos_x -= self.speed // 2
                 else:
                     self.pos_x -= self.speed
         if to_right1:
-            if self.pos_x < width / 0.8 - self.image.get_width() - 15:
+            if self.pos_x < width / 0.8 - self.image.get_width() - 20:
                 if to_down1 or to_up1:
                     self.pos_x += self.speed // 2
                 else:
@@ -205,49 +219,37 @@ class Character(pygame.sprite.Sprite):
                     self.frames_for_up[0], (self.frames_for_up[0].get_width() * 4,
                                             self.frames_for_up[0].get_height() * 4))
             elif self.right:
-                self.image = pygame.transform.scale(
-                    self.first_pos, (self.first_pos.get_width() * 4,
-                                     self.first_pos.get_height() * 4))
+                self.image = pygame.transform.scale(self.first_pos, (self.first_pos.get_width() * 4,
+                                                                     self.first_pos.get_height() * 4))
             else:
-                self.image = pygame.transform.scale(
-                    self.first_pos, (self.first_pos.get_width() * 4,
-                                     self.first_pos.get_height() * 4))
+                self.image = pygame.transform.scale(self.first_pos, (self.first_pos.get_width() * 4,
+                                                                     self.first_pos.get_height() * 4))
                 self.image = pygame.transform.flip(self.image, True, False)
         elif to_up1:
             self.cur_frame1 = (self.cur_frame1 + 1) % len(self.frames_for_up)
             image = self.frames_for_up[self.cur_frame1]
-            self.image = pygame.transform.scale(
-                image, (image.get_width() * 4,
-                        image.get_height() * 4))
+            self.image = pygame.transform.scale(image, (image.get_width() * 4, image.get_height() * 4))
             self.up = True
         elif to_down1:
             if self.right:
                 self.cur_frame2 = (self.cur_frame2 + 1) % len(self.frames_for_right)
                 image = self.frames_for_right[self.cur_frame2]
-                self.image = pygame.transform.scale(
-                    image, (image.get_width() * 4,
-                            image.get_height() * 4))
+                self.image = pygame.transform.scale(image, (image.get_width() * 4, image.get_height() * 4))
             else:
                 self.cur_frame2 = (self.cur_frame2 + 1) % len(self.frames_for_left)
                 image = self.frames_for_left[self.cur_frame2]
-                self.image = pygame.transform.scale(
-                    image, (image.get_width() * 4,
-                            image.get_height() * 4))
+                self.image = pygame.transform.scale(image, (image.get_width() * 4, image.get_height() * 4))
             self.up = False
         elif to_left1:
             self.cur_frame3 = (self.cur_frame3 + 1) % len(self.frames_for_left)
             image = self.frames_for_left[self.cur_frame3]
-            self.image = pygame.transform.scale(
-                image, (image.get_width() * 4,
-                        image.get_height() * 4))
+            self.image = pygame.transform.scale(image, (image.get_width() * 4, image.get_height() * 4))
             self.right = False
             self.up = False
         elif to_right1:
             self.cur_frame4 = (self.cur_frame4 + 1) % len(self.frames_for_right)
             image = self.frames_for_right[self.cur_frame4]
-            self.image = pygame.transform.scale(
-                image, (image.get_width() * 4,
-                        image.get_height() * 4))
+            self.image = pygame.transform.scale(image, (image.get_width() * 4, image.get_height() * 4))
             self.right = True
             self.up = False
 
@@ -289,9 +291,7 @@ class Attack(pygame.sprite.Sprite):
     def update(self):
         self.cur_frame = (self.cur_frame + 1) % len(self.frames)
         image = self.frames[self.cur_frame]
-        self.image = pygame.transform.scale(
-            image, (image.get_width() * 4,
-                    image.get_height() * 4))
+        self.image = pygame.transform.scale(image, (image.get_width() * 4, image.get_height() * 4))
 
 
 class Enemy(pygame.sprite.Sprite):
@@ -376,6 +376,8 @@ class Enemy(pygame.sprite.Sprite):
             enemies.remove(self)
             all_sprites.remove(self)
             score += 10
+            if random.randint(1, 10) == 1:
+                potion = Potion(self.pos_x + random.randint(5, 10), self.pos_y + random.randint(10, 15))
 
     def player_hit(self):
         if pygame.time.get_ticks() - self.last_hit >= 2000:
@@ -383,6 +385,18 @@ class Enemy(pygame.sprite.Sprite):
             self.last_hit = pygame.time.get_ticks()
             if chel.HP <= 0:
                 all_sprites.remove(chel)
+
+
+class Door(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__(all_sprites)
+        self.pos_x = x
+        self.pos_y = y
+        self.image = pygame.image.load('pictures/door.png')
+        self.rect = self.image.get_rect().move(x, y)
+
+    def update(self):
+        self.rect = self.image.get_rect().move(self.pos_x, self.pos_y)
 
 
 def terminate():
@@ -393,19 +407,39 @@ def terminate():
 def start_end_screen(screen, end):
     global fullscreen_mode
     statistics = False
-    text = ["KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC",
-            "", "НАЧАТЬ", "", "СТАТИСТИКА"]
     image = pygame.image.load('pictures/second.tiff')
-    if end:
-        text = ["KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC",
-                "", f"ВЫ НАБРАЛИ {score}", "НАЖМИТЕ Q", "ЧТОБЫ ВЕРНУТЬСЯ"]
-        image = pygame.image.load('pictures/game_over.tiff')
+    text = [""]
     fon = pygame.transform.scale(image, size)
-    if fullscreen_mode:
-        fon = pygame.transform.scale(image, (info.current_w, info.current_h))
-    screen.blit(fon, (0, 0))
-    text_tool(text)
     while True:
+        screen.blit(fon, (0, 0))
+        if end:
+            text = ["KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC", "", f"ВЫ НАБРАЛИ {score}", "", "ВЕРНУТЬСЯ"]
+            image = pygame.image.load('pictures/game_over.tiff')
+        elif statistics:
+            image = pygame.image.load('pictures/statistics.tiff')
+            text = ["НАЗАД"]
+            con = sqlite3.connect("database")
+            cur = con.cursor()
+            table = cur.execute("SELECT * FROM score").fetchall()[-15:]
+            font = pygame.font.Font('GloriaHallelujah-Regular.ttf', 30)
+            y_string = 0
+            x_string = 150
+            for i in table:
+                y_string += 50
+                string = [str(j) for j in i]
+                string = font.render('  '.join(string), True, 'black')
+                screen.blit(string, (x_string, y_string))
+            con.commit()
+            con.close()
+        elif not end:
+            screen.blit(fon, (0, 0))
+            image = pygame.image.load('pictures/second.tiff')
+            text = ["KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC", "", "НАЧАТЬ", "", "СТАТИСТИКА"]
+        fon = pygame.transform.scale(image, size)
+        if fullscreen_mode:
+            fon = pygame.transform.scale(image, (info.current_w, info.current_h))
+        text_tool(text)
+        pygame.display.flip()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
@@ -413,47 +447,27 @@ def start_end_screen(screen, end):
                 fullscreen_mode = not fullscreen_mode
                 if fullscreen_mode:
                     screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
-                    fon = pygame.transform.scale(image, (info.current_w, info.current_h))
-                    screen.blit(fon, (0, 0))
-                    text_tool(text)
                 else:
                     screen = pygame.display.set_mode(size)
-                    fon = pygame.transform.scale(image, size)
-                    screen.blit(fon, (0, 0))
-                    text_tool(text)
-            elif end and event.type == pygame.KEYDOWN and event.key == pygame.K_q:
-                all_sprites.empty()
-                enemies.empty()
-                attacks.empty()
-                restart()
-            elif not end and event.type == pygame.MOUSEBUTTONDOWN:
-                if not statistics and 5 < event.pos[0] <= 95 and 115 < event.pos[1] <= 145:
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if not (statistics and end) and 5 < event.pos[0] <= 95 and 115 < event.pos[1] <= 145:
+                    login(screen)
                     return
-                if 5 < event.pos[0] <= 148 and 175 < event.pos[1] <= 205:
+                if not end and 5 < event.pos[0] <= 148 and 175 < event.pos[1] <= 205:
                     statistics = True
                 if statistics and 5 < event.pos[0] <= 88 and 55 < event.pos[1] <= 85:
                     statistics = False
-        if statistics:
-            screen.blit(fon, (0, 0))
-            image = pygame.image.load('pictures/statistics.tiff')
-            fon = pygame.transform.scale(image, size)
-            if fullscreen_mode:
-                fon = pygame.transform.scale(image, (info.current_w, info.current_h))
-            screen.blit(fon, (0, 0))
-            text = ["НАЗАД"]
-            text_tool(text)
-        elif not end:
-            screen.blit(fon, (0, 0))
-            image = pygame.image.load('pictures/second.tiff')
-            fon = pygame.transform.scale(image, size)
-            if fullscreen_mode:
-                fon = pygame.transform.scale(image, (info.current_w, info.current_h))
-            screen.blit(fon, (0, 0))
-            text = ["KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC",
-                    "", "НАЧАТЬ", "", "СТАТИСТИКА"]
-            text_tool(text)
-        pygame.display.flip()
-        clock.tick(60)
+                if end and 5 < event.pos[0] <= 148 and 175 < event.pos[1] <= 205:
+                    all_sprites.empty()
+                    enemies.empty()
+                    attacks.empty()
+                    con = sqlite3.connect("database")
+                    cur = con.cursor()
+                    cur.execute("INSERT INTO score (nickname, score_number, lvl) VALUES (?, ?, ?)",
+                                (nickname, f'{score} points', f'{lvl} level'))
+                    con.commit()
+                    con.close()
+                    restart()
 
 
 def text_tool(text):
@@ -473,20 +487,121 @@ def text_tool(text):
 
 
 def level_build():
-    for number in range(random.randint(1, 5)):
-        Enemy(random.randint(16, info.current_w - 34), random.randint(36, info.current_h - 54))
+    global minimum, maximum
+    if lvl in [5, 10, 15, 20]:
+        minimum += 1
+        maximum += 1
+    for number in range(random.randint(minimum, maximum)):
+        Enemy(random.randint(50, info.current_w - 100), random.randint(50, info.current_h - 100))
+    level_up()
+    potions.empty()
 
 
 def restart():
-    global chel, to_right1, to_left1, to_up1, to_down1
+    global chel, to_right1, to_left1, to_up1, to_down1, door, score
     to_right1, to_left1, to_up1, to_down1 = False, False, False, False
+    score = 0
     start_end_screen(screen, False)
     chel = Character(150, 200)
+    door = Door(random.randint(400, 1240), 0)
     game(fullscreen_mode, screen)
     start_end_screen(screen, True)
 
 
+def login(screen):
+    global fullscreen_mode, nickname
+    name = ''
+    font = pygame.font.Font(None, 50)
+    NAME = font.render(name, True, 'white')
+    text = font.render("Как твоё имя ?", True, 'white')
+    enter_text = font.render("Нажмите ENTER, чтобы продолжить", True, 'white')
+    width = 0.8 * info.current_w // 2
+    height = 0.8 * info.current_h // 2
+    if fullscreen_mode:
+        width = info.current_w // 2
+        height = info.current_h // 2
+    x = width - 150
+    y = height - 50
+    text_x1 = width - text.get_width() // 2
+    text_y1 = height - text.get_height() - 100
+    enter_text_x = width - enter_text.get_width() // 2
+    enter_text_y = height - enter_text.get_height() + 100
+    input_on = False
+    while True:
+        for event in pygame.event.get():
+            keys = pygame.key.get_pressed()
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if x < event.pos[0] <= 300 + x and y < event.pos[1] <= 50 + y:
+                    input_on = True
+                else:
+                    input_on = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN and len(name) > 0:
+                    nickname = name
+                    return
+                if input_on:
+                    if event.key == pygame.K_BACKSPACE:
+                        name = name[:-1]
+                    elif event.key == pygame.K_SPACE:
+                        pass
+                    else:
+                        letter1 = event.unicode
+                        letter2 = font.render(letter1, True, 'white')
+                        if NAME.get_width() + letter2.get_width() <= 280:
+                            name += letter1
+                    NAME = font.render(name, True, 'white')
+                else:
+                    if event.key == pygame.K_f:
+                        fullscreen_mode = not fullscreen_mode
+                        if fullscreen_mode:
+                            screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
+                            width = info.current_w // 2
+                            height = info.current_h // 2
+                        else:
+                            screen = pygame.display.set_mode(size)
+                            width = 0.8 * info.current_w // 2
+                            height = 0.8 * info.current_h // 2
+                        x = width - 150
+                        y = height - 50
+                        text_x1 = width - text.get_width() // 2
+                        text_y1 = height - text.get_height() - 100
+                        enter_text_x = width - enter_text.get_width() // 2
+                        enter_text_y = height - enter_text.get_height() + 100
+        pygame.draw.rect(screen, 'white', (x, y, 300, 50), 1)
+        screen.blit(NAME, (x + 10, y + 10, 300, 50))
+        screen.blit(text, (text_x1, text_y1))
+        screen.blit(enter_text, (enter_text_x, enter_text_y))
+        pygame.display.flip()
+        screen.fill('black')
+
+
+def level_up():
+    global health_gain, strength_gain, speed_gain
+    if lvl in [2, 3, 4, 5]:
+        health_gain += 20
+    if lvl in [6, 7, 8, 9]:
+        strength_gain += 2
+    if lvl in [10, 12]:
+        speed_gain += 1
+    for enem in enemies:
+        enem.HP += health_gain
+        enem.damage += strength_gain
+        enem.speed += speed_gain
+
+
+class Potion(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(all_sprites, potions)
+        image = pygame.image.load('pictures/potion.tiff')
+        self.image = pygame.transform.scale(image, (image.get_width() * 4, image.get_height() * 4))
+        self.rect = self.image.get_rect().move(pos_x, pos_y)
+        self.HP_return = random.randint(10, 40)
+
+
 start_end_screen(screen, False)
+door = Door(random.randint(400, 1240), 0)
 chel = Character(150, 200)
 game(fullscreen_mode, screen)
 start_end_screen(screen, True)
