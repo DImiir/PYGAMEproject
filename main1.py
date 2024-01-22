@@ -22,6 +22,10 @@ nickname = ''
 lvl = 0
 speed_gain, strength_gain, health_gain = 0, 0, 0
 minimum, maximum = 1, 6
+sound1 = pygame.mixer.Sound('sounds/punch flesh 1.wav')
+sound2 = pygame.mixer.Sound('sounds/umbrella hit 18.wav')
+sound3 = pygame.mixer.Sound('sounds/05_door_open_1.mp3')
+sound4 = pygame.mixer.Sound('sounds/06_door_close_1.mp3')
 
 
 def game(fullscreen_mode, screen):
@@ -60,12 +64,14 @@ def game(fullscreen_mode, screen):
                             Attack(chel.pos_x + 10, chel.pos_y - 10, 'up')
                     if chel.rect.colliderect(door.rect) and not enemies:
                         if event.key == pygame.K_e:
+                            pygame.mixer.Sound.play(sound3)
                             level_build()
                             fight_cd = pygame.time.get_ticks()
                             fight = True
                             chel.pos_y += 790 - chel.pos_y
                             door.pos_x = random.randint(400, 1300)
                             lvl += 1
+                            pygame.mixer.Sound.play(sound4)
                 if event.type == pygame.KEYUP:
                     if event.key == pygame.K_a:
                         to_left1 = False
@@ -102,6 +108,7 @@ def game(fullscreen_mode, screen):
                     if enemies:
                         for enem in enemies:
                             if atk.rect.colliderect(enem.rect):
+                                pygame.mixer.Sound.play(sound2)
                                 enem.hit(atk.damage)
                                 attacks.remove(atk)
                                 all_sprites.remove(atk)
@@ -113,10 +120,9 @@ def game(fullscreen_mode, screen):
             if potions:
                 for potion in potions:
                     if chel.rect.colliderect(potion.rect):
-                        if chel.HP + potion.HP_return <= 200:
-                            chel.HP += potion.HP_return
-                            all_sprites.remove(potion)
-                            potions.remove(potion)
+                        chel.HP += potion.HP_up
+                        all_sprites.remove(potion)
+                        potions.remove(potion)
             chel.move()
             all_sprites.update()
             all_sprites.draw(screen)
@@ -381,6 +387,7 @@ class Enemy(pygame.sprite.Sprite):
 
     def player_hit(self):
         if pygame.time.get_ticks() - self.last_hit >= 2000:
+            pygame.mixer.Sound.play(sound1)
             chel.HP -= self.damage
             self.last_hit = pygame.time.get_ticks()
             if chel.HP <= 0:
@@ -529,7 +536,6 @@ def login(screen):
     input_on = False
     while True:
         for event in pygame.event.get():
-            keys = pygame.key.get_pressed()
             if event.type == pygame.QUIT:
                 terminate()
             if event.type == pygame.MOUSEBUTTONDOWN:
@@ -597,11 +603,14 @@ class Potion(pygame.sprite.Sprite):
         image = pygame.image.load('pictures/potion.tiff')
         self.image = pygame.transform.scale(image, (image.get_width() * 4, image.get_height() * 4))
         self.rect = self.image.get_rect().move(pos_x, pos_y)
-        self.HP_return = random.randint(10, 40)
+        self.HP_up = random.randint(10, 40)
 
 
 start_end_screen(screen, False)
+pygame.mixer.music.load('sounds/Goblins_Dance_(Battle).wav')
+pygame.mixer.music.play(-1)
 door = Door(random.randint(400, 1240), 0)
 chel = Character(150, 200)
 game(fullscreen_mode, screen)
+pygame.mixer.music.stop()
 start_end_screen(screen, True)
