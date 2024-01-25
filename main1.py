@@ -4,6 +4,7 @@ import random
 import sqlite3
 
 pygame.init()
+pygame.display.set_icon(pygame.image.load('pictures/icon.png'))
 all_sprites = pygame.sprite.Group()
 attacks = pygame.sprite.Group()
 enemies = pygame.sprite.Group()
