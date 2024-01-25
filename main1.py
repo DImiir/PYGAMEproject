@@ -33,6 +33,8 @@ def game(fullscreen_mode, screen):
     stamina_cd = 0
     fight_cd = 0
     fight = False
+    pygame.mixer.music.load('sounds/Goblins_Dance_(Battle).wav')
+    pygame.mixer.music.play(-1)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -111,6 +113,7 @@ def game(fullscreen_mode, screen):
                                 attacks.remove(atk)
                                 all_sprites.remove(atk)
             if chel not in all_sprites:
+                pygame.mixer.music.stop()
                 return
             if pygame.time.get_ticks() - stamina_cd >= 1000 and chel.stamina < 200:
                 chel.stamina += 20
@@ -461,7 +464,7 @@ def start_end_screen(screen, end):
                 else:
                     screen = pygame.display.set_mode(size)
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if not (statistics and end) and 5 < event.pos[0] <= 95 and 115 < event.pos[1] <= 145:
+                if not statistics and not end and 5 < event.pos[0] <= 95 and 115 < event.pos[1] <= 145:
                     login(screen)
                     return
                 if not end and 5 < event.pos[0] <= 148 and 175 < event.pos[1] <= 205:
@@ -513,8 +516,8 @@ def restart():
     to_right1, to_left1, to_up1, to_down1 = False, False, False, False
     score = 0
     start_end_screen(screen, False)
-    chel = Character(300, 300)
     door = Door(random.randint(200, 1240), 0)
+    chel = Character(300, 300)
     game(fullscreen_mode, screen)
     start_end_screen(screen, True)
 
@@ -611,10 +614,7 @@ class Potion(pygame.sprite.Sprite):
 
 
 start_end_screen(screen, False)
-pygame.mixer.music.load('sounds/Goblins_Dance_(Battle).wav')
-pygame.mixer.music.play(-1)
 door = Door(random.randint(200, 1240), 0)
 chel = Character(300, 300)
 game(fullscreen_mode, screen)
-pygame.mixer.music.stop()
 start_end_screen(screen, True)
