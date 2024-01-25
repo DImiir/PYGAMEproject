@@ -89,8 +89,6 @@ def game(fullscreen_mode, screen):
             screen.fill((0, 0, 0))
             clock.tick(30)
             screen.blit(background, (0, 0))
-            pygame.draw.rect(screen, pygame.color.Color('red'), (18, 18, chel.HP * 4, 20))
-            pygame.draw.rect(screen, pygame.color.Color('blue'), (18, 40, chel.stamina * 2, 20))
             if pygame.time.get_ticks() - fight_cd > 3000:
                 fight = False
                 if enemies:
@@ -126,6 +124,8 @@ def game(fullscreen_mode, screen):
             chel.move()
             all_sprites.update()
             all_sprites.draw(screen)
+            pygame.draw.rect(screen, pygame.color.Color('red'), (18, 18, chel.HP * 4, 20))
+            pygame.draw.rect(screen, pygame.color.Color('blue'), (18, 40, chel.stamina * 2, 20))
             font = pygame.font.Font(None, 50)
             text = font.render(str(score), True, (255, 255, 255))
             text_w, text_h = text.get_width(), text.get_height()
@@ -400,9 +400,11 @@ class Door(pygame.sprite.Sprite):
         self.pos_x = x
         self.pos_y = y
         self.image = pygame.image.load('pictures/door.png')
+        self.image = pygame.transform.scale(self.image, ((info.current_w / 89) * 9, 0.125 * info.current_h))
         self.rect = self.image.get_rect().move(x, y)
 
     def update(self):
+        self.image = pygame.transform.scale(self.image, ((info.current_w / 89) * 9, 0.125 * info.current_h))
         self.rect = self.image.get_rect().move(self.pos_x, self.pos_y)
 
 
@@ -430,7 +432,9 @@ def start_end_screen(screen, end):
             table = cur.execute("SELECT * FROM score").fetchall()[-15:]
             font = pygame.font.Font('GloriaHallelujah-Regular.ttf', 30)
             y_string = 0
-            x_string = 150
+            x_string = 2 * (width / 19)
+            if fullscreen_mode:
+                x_string = 2 * (info.current_w / 19)
             for i in table:
                 y_string += 50
                 string = [str(j) for j in i]
@@ -509,8 +513,8 @@ def restart():
     to_right1, to_left1, to_up1, to_down1 = False, False, False, False
     score = 0
     start_end_screen(screen, False)
-    chel = Character(150, 200)
-    door = Door(random.randint(400, 1240), 0)
+    chel = Character(300, 300)
+    door = Door(random.randint(200, 1240), 0)
     game(fullscreen_mode, screen)
     start_end_screen(screen, True)
 
@@ -609,8 +613,8 @@ class Potion(pygame.sprite.Sprite):
 start_end_screen(screen, False)
 pygame.mixer.music.load('sounds/Goblins_Dance_(Battle).wav')
 pygame.mixer.music.play(-1)
-door = Door(random.randint(400, 1240), 0)
-chel = Character(150, 200)
+door = Door(random.randint(200, 1240), 0)
+chel = Character(300, 300)
 game(fullscreen_mode, screen)
 pygame.mixer.music.stop()
 start_end_screen(screen, True)
