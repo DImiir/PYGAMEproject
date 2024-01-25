@@ -11,7 +11,7 @@ potions = pygame.sprite.Group()
 info = pygame.display.Info()
 size = width, height = 0.8 * info.current_w, 0.8 * info.current_h
 screen = pygame.display.set_mode(size)
-pygame.display.set_caption("KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC")
+pygame.display.set_caption("KINGDOM: A CHILDHOOD DREAM BUT MORE REALISTIC")
 clock = pygame.time.Clock()
 fullscreen_mode = False
 image = pygame.image.load('pictures/background.png')
@@ -422,7 +422,7 @@ def start_end_screen(screen, end):
     while True:
         screen.blit(fon, (0, 0))
         if end:
-            text = ["KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC", "", f"ВЫ НАБРАЛИ {score}", "", "ВЕРНУТЬСЯ"]
+            text = ["KINGDOM: A CHILDHOOD DREAM BUT MORE REALISTIC", "", f"ВЫ НАБРАЛИ {score}", "", "ВЕРНУТЬСЯ"]
             image = pygame.image.load('pictures/game_over.tiff')
         elif statistics:
             image = pygame.image.load('pictures/statistics.tiff')
@@ -445,7 +445,7 @@ def start_end_screen(screen, end):
         elif not end:
             screen.blit(fon, (0, 0))
             image = pygame.image.load('pictures/second.tiff')
-            text = ["KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC", "", "НАЧАТЬ", "", "СТАТИСТИКА"]
+            text = ["KINGDOM: A CHILDHOOD DREAM BUT MORE REALISTIC", "", "НАЧАТЬ", "", "СТАТИСТИКА"]
         fon = pygame.transform.scale(image, size)
         if fullscreen_mode:
             fon = pygame.transform.scale(image, (info.current_w, info.current_h))
@@ -491,7 +491,7 @@ def text_tool(text):
         intro_rect.top = text_coord
         intro_rect.x = 10
         text_coord += intro_rect.height
-        if line not in ['', 'KINGDOM: A CHILDHOOD DREAM BUT IT IS MORE REALISTIC']:
+        if line not in ['', 'KINGDOM: A CHILDHOOD DREAM BUT MORE REALISTIC']:
             pygame.draw.rect(screen, pygame.color.Color('black'), (intro_rect.x - 5, intro_rect.top - 5,
                                                                    intro_rect.width + 10, intro_rect.height + 10), 1)
         screen.blit(string_rendered, intro_rect)
