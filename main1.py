@@ -71,7 +71,7 @@ def game(fullscreen_mode, screen):
                             level_build()
                             fight_cd = pygame.time.get_ticks()
                             fight = True
-                            chel.pos_y += 790 - chel.pos_y
+                            chel.pos_y += info.current_h - chel.image.get_height() - chel.pos_y
                             door.pos_x = random.randint(400, 1300)
                             lvl += 1
                             pygame.mixer.Sound.play(sound4)
